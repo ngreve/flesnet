@@ -90,9 +90,9 @@ Application::~Application() {
 
 void Application::run() {
   uint64_t limit = par_.maximum_number;
-  std::cout << "hi hv eqid flag si sv idx/start        crc      size     offset           content\n";
 
   if (!par_.ms_cat.empty()) {
+    std::cout << "hi hv eqid flag si sv idx/start        crc      size     offset           content\n";
     fles::MicrosliceInputArchive archive(par_.ms_cat);
     std::unique_ptr<fles::StorableMicroslice> ms = nullptr;
     while ((ms = archive.get()) != nullptr)  {
