@@ -3,19 +3,24 @@
 #include "Application.hpp"
 #include "FlesnetPatternGenerator.hpp"
 #include "MicrosliceAnalyzer.hpp"
+#include "MicrosliceDescriptor.hpp"
 #include "MicrosliceInputArchive.hpp"
 #include "MicrosliceOutputArchive.hpp"
 #include "MicrosliceReceiver.hpp"
 #include "MicrosliceTransmitter.hpp"
+#include "StorableMicroslice.hpp"
 #include "TimesliceDebugger.hpp"
 #include "log.hpp"
 #include "shm_channel_client.hpp"
 #include <chrono>
+#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <thread>
+#include <boost/format.hpp>
 
 Application::Application(Parameters const& par) : par_(par) {
+
 
   // Source setup
   if (!par_.input_shm.empty()) {
@@ -85,6 +90,27 @@ Application::~Application() {
 
 void Application::run() {
   uint64_t limit = par_.maximum_number;
+  std::cout << "hi hv eqid flag si sv idx/start        crc      size     offset           content\n";
+
+  if (!par_.ms_cat.empty()) {
+    fles::MicrosliceInputArchive archive(par_.ms_cat);
+    std::unique_ptr<fles::StorableMicroslice> ms = nullptr;
+    while ((ms = archive.get()) != nullptr)  {
+      fles::MicrosliceDescriptor md = ms->desc();
+      std::cout << boost::format(
+           "%02x %02x %04x %04x %02x %02x %016lx %08x %08x %016lx ") %
+           static_cast<unsigned int>(md.hdr_id) %
+           static_cast<unsigned int>(md.hdr_ver) % md.eq_id % md.flags %
+           static_cast<unsigned int>(md.sys_id) %
+           static_cast<unsigned int>(md.sys_ver) % md.idx % md.crc % md.size %
+           md.offset;
+      for (uint64_t i = 0; i < ms->desc().size; i++) {
+        std::cout << uint16_t(ms->content()[i]);
+      }
+      std::cout << std::endl;
+    }
+    return;
+  }
 
   while (auto microslice = source_->get()) {
     std::shared_ptr<const fles::Microslice> ms(std::move(microslice));

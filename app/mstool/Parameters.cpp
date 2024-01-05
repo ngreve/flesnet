@@ -34,6 +34,9 @@ void Parameters::parse_options(int argc, char* argv[]) {
               "unlimited)");
   general_add("exec,e", po::value<std::string>(&exec)->value_name("<string>"),
               "name of an executable to run after startup");
+  general_add("ms-print", po::value<std::string>(&ms_cat)->value_name("<string>"),
+              "prints the contents of a microslice archive. Useful to pipe it into other comands.");
+
 
   po::options_description source("Source options");
   auto source_add = source.add_options();
