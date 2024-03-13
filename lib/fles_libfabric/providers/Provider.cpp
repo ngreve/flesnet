@@ -54,16 +54,16 @@ std::unique_ptr<Provider> Provider::get_provider(std::string local_host_name) {
     return std::unique_ptr<Provider>(new RDMGNIProvider(fiinfo));
   }
 
-  fiinfo = MsgSocketsProvider::exists(local_host_name);
-  if (fiinfo != nullptr) {
-    L_(info) << "found Sockets";
-    return std::unique_ptr<Provider>(new MsgSocketsProvider(fiinfo));
-  }
-
   fiinfo = RDMSocketsProvider::exists(local_host_name);
   if (fiinfo != nullptr) {
     L_(info) << "found rdm";
     return std::unique_ptr<Provider>(new RDMSocketsProvider(fiinfo));
+  }
+
+  fiinfo = MsgSocketsProvider::exists(local_host_name);
+  if (fiinfo != nullptr) {
+    L_(info) << "found Sockets";
+    return std::unique_ptr<Provider>(new MsgSocketsProvider(fiinfo));
   }
 
   throw LibfabricException("no known Libfabric provider found");

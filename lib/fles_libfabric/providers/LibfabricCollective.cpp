@@ -242,7 +242,7 @@ void LibfabricCollective::wait_for_cq(struct fid_cq* cq, const int32_t events) {
           remaining = events - MAX_CQ_ENTRIES;
 
   while (received < expected) {
-    ne = fi_cq_read(cq, &wc, (expected - received));
+    ne = fi_cq_read(cq, wc, (expected - received));
     if ((ne < 0) && (ne != -FI_EAGAIN)) {
       L_(fatal) << "wait_for_cq failed: " << ne << "=" << fi_strerror(-ne);
       throw LibfabricException("wait_for_cq failed");
@@ -269,6 +269,7 @@ void LibfabricCollective::wait_for_cq(struct fid_cq* cq, const int32_t events) {
       }
     }
   }
+  delete[](wc);
   if (remaining > 0) {
     wait_for_cq(cq, remaining);
   }
