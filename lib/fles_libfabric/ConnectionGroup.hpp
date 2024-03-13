@@ -171,6 +171,7 @@ public:
         if ((ne < 0) && (ne != -FI_EAGAIN)) {
           L_(fatal) << "fi_cq_read[" << i << "] failed: " << ne << "="
                     << fi_strerror(-ne);
+          delete[](wc);
           throw LibfabricException("fi_cq_read failed");
         }
 
@@ -204,7 +205,7 @@ public:
         }
       }
     }
-
+    delete[](wc);
     return ne_total;
   }
 
