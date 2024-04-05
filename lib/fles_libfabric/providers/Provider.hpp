@@ -16,7 +16,7 @@
 #include <vector>
 
 #ifndef FIVERSION
-#define FIVERSION FI_VERSION(1, 5)
+#define FIVERSION FI_VERSION(1, 17)
 #endif
 
 namespace tl_libfabric {

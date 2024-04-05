@@ -14,7 +14,7 @@
 #include <rdma/fi_domain.h>
 #include <rdma/fi_endpoint.h>
 #include <rdma/fi_errno.h>
-
+// #include "Provider.hpp"
 #include "LibfabricException.hpp"
 
 namespace tl_libfabric {
@@ -39,7 +39,7 @@ struct fi_info* GNIProvider::exists(const std::string& local_host_name) {
   hints->domain_attr->mr_mode = FI_MR_BASIC;
   hints->fabric_attr->prov_name = strdup("gni");
 
-  int res = fi_getinfo(FI_VERSION(1, 1), local_host_name.c_str(), nullptr, 0,
+  int res = fi_getinfo(FIVERSION, local_host_name.c_str(), nullptr, 0,
                        hints, &info);
 
   if (res == 0) {
@@ -97,7 +97,7 @@ void GNIProvider::set_hostnames_and_services(
     hints->domain_attr->mr_mode = FI_MR_BASIC;
     hints->fabric_attr->prov_name = strdup("gni");
 
-    int res = fi_getinfo(FI_VERSION(1, 1), compute_hostnames[i].c_str(),
+    int res = fi_getinfo(FIVERSION, compute_hostnames[i].c_str(),
                          compute_services[i].c_str(), 0, hints, &info);
     assert(res == 0);
     assert(info != NULL);

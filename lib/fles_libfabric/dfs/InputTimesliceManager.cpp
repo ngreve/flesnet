@@ -220,6 +220,8 @@ void InputTimesliceManager::log_timeslice_transmit_time(uint32_t compute_index,
 
 bool InputTimesliceManager::acknowledge_timeslice_rdma_write(
     uint32_t compute_index, uint64_t timeslice) {
+
+      // L_(info) << "InputTimesliceManager::acknowledge_timeslice_rdma_write";
   if (!conn_timeslice_info_.get(compute_index)->contains(timeslice)) {
     L_(warning) << "[i_" << scheduler_index_ << "][ACK_RDMA_WRITE] ts "
                 << timeslice << " does not belong to conn_" << compute_index;
@@ -280,6 +282,8 @@ double InputTimesliceManager::acknowledge_timeslices_completion(
 
 bool InputTimesliceManager::is_timeslice_rdma_acked(uint32_t compute_index,
                                                     uint64_t timeslice) {
+// L_(info) << "InputTimesliceManager::is_timeslice_rdma_acked";
+
   if (!conn_timeslice_info_.get(compute_index)->contains(timeslice)) {
     L_(warning) << "[i_" << scheduler_index_ << "] [RDMA ACKED] ts "
                 << timeslice << " does not belong to conn_" << compute_index;
