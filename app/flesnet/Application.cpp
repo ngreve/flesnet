@@ -133,7 +133,7 @@ void Application::create_input_channel_senders() {
     if (scheme == "shm") {
       auto shm_identifier = par_.inputs().at(index).path.at(0);
       auto channel = std::stoul(par_.inputs().at(index).path.at(1));
-
+      std::cout << shm_identifier << std::endl;
       if (shm_devices_.count(shm_identifier) == 0u) {
         try {
           shm_devices_.insert(std::make_pair(
