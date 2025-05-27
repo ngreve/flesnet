@@ -10,6 +10,7 @@
 #include "TimesliceShmWorkItem.hpp"
 #include "TimesliceView.hpp"
 #include <boost/archive/binary_iarchive.hpp>
+#include <boost/interprocess/creation_tags.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/uuid/nil_generator.hpp>
 #include <boost/uuid/uuid.hpp>
@@ -69,6 +70,7 @@ public:
   };
 
   [[nodiscard]] bool eos() const override { return eos_; }
+  std::shared_ptr<boost::interprocess::managed_shared_memory> managed_shm_;
 
 private:
   TimesliceView* do_get() override {
@@ -126,7 +128,7 @@ private:
     return nullptr;
   }
 
-  std::shared_ptr<boost::interprocess::managed_shared_memory> managed_shm_;
+  // std::shared_ptr<boost::interprocess::managed_shared_memory> managed_shm_;
 
   [[nodiscard]] boost::uuids::uuid managed_shm_uuid() const {
     if (!managed_shm_) {
