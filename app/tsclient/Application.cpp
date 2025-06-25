@@ -10,6 +10,7 @@
 #include "TimesliceOutputArchive.hpp"
 #include "TimeslicePublisher.hpp"
 #include "Utility.hpp"
+#include <cstdint>
 #include <thread>
 #include <utility>
 
@@ -183,6 +184,7 @@ void Application::run() {
   uint64_t limit = par_.maximum_number();
 
   uint64_t index = 0;
+  std::vector<uint64_t> sizes;
   while (auto timeslice = source_->get()) {
     if (index >= par_.offset() &&
         (index - par_.offset()) % par_.stride() == 0) {
@@ -204,6 +206,13 @@ void Application::run() {
     if (par_.rate_limit() != 0.0) {
       rate_limit_delay();
     }
+    // ts->s
+    uint64_t size = 0;
+    for (uint64_t i = 0; i < ts->num_components(); i++) {
+      size += ts->size_component(i);
+    }
+    sizes.push_back(size);
+
     for (auto& sink : sinks_) {
       sink->put(ts);
     }
@@ -240,4 +249,23 @@ void Application::run() {
       }
     }
   }
+
+  sort(sizes.begin(), sizes.end(), [](int a, int b) {
+    return a < b;
+  });
+
+  double mean = 0.0;
+  if ((sizes.size() % 2 == 0)) {
+    uint64_t a = sizes.at(ceil(sizes.size() / 2.0));
+    uint64_t b = sizes.at(static_cast<uint64_t>(sizes.size()));
+    mean = (a + b) / 2.0;
+  } else {
+    mean = sizes.at(ceil(sizes.size() / 2.0));
+  }
+  uint64_t max = sizes.at(sizes.size() - 1);
+  uint64_t min = sizes.at(0);
+  std::cout << std::fixed << "Statistics: " << '\n' <<
+  "median: " << mean << '\n' <<
+  "max: "  << max << '\n' <<
+  "min: " << min  << std::endl;
 }
