@@ -59,6 +59,7 @@ Keep this terminal open.
 
 With our shared memory microslice input source ready, we can start Flesnet. In this most simple example, we will start Flesnet so that one entry node and one build node is represented using one Flesnet process.
 
+
 ```
 ./flesnet -t zeromq --timeslice-size 20 -n 15 -i 0 -I shm:/fles_in_shared_memory/0 -O shm:/fles_out_shared_memory/0 --processor-instances 1 -e "./tsclient -i shm:%s -o file:timeslice_archive.tsa"
 ```
@@ -122,15 +123,22 @@ Based on the parameters used in the `Running Flesnet` section you can validate t
 ./archive_validator -I ms_archive.msa -O timeslice_archive.tsa --timeslice-size 20 --overlap 1 --timeslice-cnt 15
 ```
 
+<<<<<<< HEAD
 - `--timeslice-size`: The expected (core) size of timeslices in the *.tsa file(s)
 - `--timeslice-cnt`: The expected summed up amount of timeslices accross all given timeslice archive files.
+=======
+- `--timeslice-size`: The expected (core) size of timeslices in the *.tsa file(s)
+- `--timeslice-cnt`: (Optional) The expected summed up amount of timeslices accross all given timeslice archive files. If the given value does not meet the found timeslices count verification fails. Don't set it, for a more relaxed verification.
+>>>>>>> 0ea4c2037ca92b16d162a188e67a84e5887eade2
 - `--overlap`: Size of overlap between timeslices. In the `Running Flesnet` example did not explicitly set this parameter, therefore the default value of 1 was used.
 - `-I`: Space-seperated list of filepaths pointing to the used microslice archive files.
 - `-O`: Space-seperated list of filepaths pointing to the created timeslice archive files created by Flesnet and its build nodes.
+- `-l`: Log level (lower value results in more verbose output)
 
 In case of valid archives, the output will look similar to:
 ```
 ./archive_validator -I ms_archive.msa -O timeslice_archive.tsa --timeslice-size 20 --overlap 1 --timeslice-cnt 15
+<<<<<<< HEAD
 [10:07:46] INFO: Verifying metadata of: 'timeslice_archive.tsa' ...
 [10:07:46] INFO: Successfully verified metadata of: 'timeslice_archive.tsa'. 0 remaining ...
 [10:07:46] INFO: Verified:
@@ -139,4 +147,14 @@ In case of valid archives, the output will look similar to:
 [10:07:46] INFO: overall timeslices: 15
 [10:07:46] INFO: Success - Archives valid.
 [10:07:46] INFO: exiting
+=======
+[10:28:43] INFO: MS build offset: 0
+[10:28:43] INFO: Verified:
+[10:28:43] INFO: Time t_elapsed: 0h:00m:00s
+[10:28:43] INFO: Overall microslices: 1501
+[10:28:43] INFO: Overlaps count: 14
+[10:28:43] INFO: Overall TS components: 15
+[10:28:43] INFO: Success - Archives valid.
+[10:28:43] INFO: exiting
+>>>>>>> 0ea4c2037ca92b16d162a188e67a84e5887eade2
 ```
