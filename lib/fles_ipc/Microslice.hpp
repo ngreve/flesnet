@@ -4,6 +4,7 @@
 #pragma once
 
 #include "MicrosliceDescriptor.hpp"
+#include <cstdint>
 #include <boost/serialization/access.hpp>
 
 namespace fles {
@@ -29,6 +30,9 @@ public:
 
   /// Compare computed CRC-32 checksum to value in header
   [[nodiscard]] bool check_crc() const;
+
+  bool operator==(const Microslice& other) const;
+  bool operator!=(const Microslice& other) const;
 
 protected:
   Microslice() = default;

@@ -264,6 +264,7 @@ endif()
 
 add_subdirectory(app/mstool)
 add_subdirectory(app/timeslice_forwarder)
+add_subdirectory(app/archive_validator)
 add_subdirectory(app/msconsumer)
 add_subdirectory(app/tsclient)
 add_subdirectory(app/flesnet)
