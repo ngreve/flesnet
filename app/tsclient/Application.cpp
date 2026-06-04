@@ -149,8 +149,8 @@ Application::Application(Parameters const& par,
   }
 
   if (par_.rate_limit() != 0.0) {
-    L_(info) << output_prefix_ << "rate limit active: "
-             << human_readable_count(par_.rate_limit(), true, "Hz");
+    L_(info) << output_prefix_ << "rate limit active: " << par_.rate_limit()
+             << " Hz";
   }
 }
 
@@ -163,13 +163,13 @@ Application::~Application() {
 }
 
 void Application::rate_limit_delay() const {
+  if (count_ == 0) {
+    return;
+  }
   auto delta_is = std::chrono::high_resolution_clock::now() - time_begin_;
   auto delta_want = std::chrono::microseconds(
       static_cast<uint64_t>(count_ * 1.0e6 / par_.rate_limit()));
-
-  if (delta_want > delta_is) {
-    std::this_thread::sleep_for(delta_want - delta_is);
-  }
+  try_delay(delta_want - delta_is);
 }
 
 void Application::native_speed_delay(uint64_t ts_start_time) {
@@ -177,18 +177,32 @@ void Application::native_speed_delay(uint64_t ts_start_time) {
     first_ts_start_time_ = ts_start_time;
   } else {
     auto delta_is = std::chrono::high_resolution_clock::now() - time_begin_;
-    auto delta_want =
-        std::chrono::nanoseconds(ts_start_time - first_ts_start_time_) /
-        par_.native_speed();
-    if (delta_want > delta_is) {
-      std::this_thread::sleep_for(delta_want - delta_is);
-    }
+    auto delta_want = std::chrono::nanoseconds(static_cast<uint64_t>(
+        (ts_start_time - first_ts_start_time_) / par_.native_speed()));
+    try_delay(delta_want - delta_is);
+  }
+}
+
+void Application::try_delay(std::chrono::nanoseconds sleep_duration) const {
+  if (sleep_duration.count() > 0) {
+    L_(debug) << output_prefix_ << "maintaining replay rate, sleeping for "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(
+                     sleep_duration)
+                         .count() /
+                     1000.
+              << " s";
+    std::this_thread::sleep_for(sleep_duration);
+  } else {
+    L_(warning) << output_prefix_ << "replay rate not maintained, lacking by "
+                << std::chrono::duration_cast<std::chrono::milliseconds>(
+                       sleep_duration)
+                           .count() /
+                       1000.
+                << " s";
   }
 }
 
 void Application::run() {
-  time_begin_ = std::chrono::high_resolution_clock::now();
-
   if (benchmark_) {
     benchmark_->run();
     return;
@@ -213,7 +227,10 @@ void Application::run() {
     } else {
       ts = std::shared_ptr<const fles::Timeslice>(std::move(timeslice));
     }
-
+    // once we (pre-)fetched the timeslice we might delay publishing it
+    if (count_ == 0) {
+      time_begin_ = std::chrono::high_resolution_clock::now();
+    }
     if (par_.native_speed() != 0.0) {
       native_speed_delay(ts->start_time());
     }
@@ -221,24 +238,6 @@ void Application::run() {
       rate_limit_delay();
     }
 
-                    for (uint64_t c = 0; c < ts->num_components(); c++) {
-                    if (ts->size_component(c) == 0) {
-                        std::cout << "is 0" << std::endl;
-                        exit(-1);
-                    }
-                    for (uint64_t m = 0;  m < ts->num_microslices(c); m++) {
-                        auto m_desc = ts->descriptor(c, m);
-                        if (m_desc.size == 0) {
-                            std::cout << "component: " << c << std::endl;
-                            std::cout << "ms idx: " << m << std::endl;
-                            std::cout << "m_desc.sys_id: " << uint64_t(m_desc.sys_id) << std::endl;
-                            std::cout << "m_desc.eq_id: " << uint64_t(m_desc.eq_id) << std::endl;
-                            std::cout << "m_desc.flags: " << uint64_t(m_desc.flags) << std::endl;
-                            std::cout << "microslice == 0" << std::endl;
-                            exit(-1);
-                        }
-                    }
-                }
     for (auto& sink : sinks_) {
       sink->put(ts);
     }
