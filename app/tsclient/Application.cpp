@@ -219,7 +219,6 @@ void Application::run() {
       ++index;
       continue;
     }
-
     std::shared_ptr<const fles::Timeslice> ts;
     if (par_.release_mode()) {
       ts = std::make_shared<const fles::StorableTimeslice>(*timeslice);
@@ -237,7 +236,6 @@ void Application::run() {
     if (par_.rate_limit() != 0.0) {
       rate_limit_delay();
     }
-
     for (auto& sink : sinks_) {
       sink->put(ts);
     }

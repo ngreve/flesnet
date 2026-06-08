@@ -4,7 +4,6 @@
 #pragma once
 
 #include "MicrosliceDescriptor.hpp"
-#include <cstdint>
 #include <boost/serialization/access.hpp>
 
 namespace fles {

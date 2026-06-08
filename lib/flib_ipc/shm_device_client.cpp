@@ -6,7 +6,7 @@
 template <typename T_DESC, typename T_DATA>
 shm_device_client<T_DESC, T_DATA>::shm_device_client(
     const std::string& shm_identifier) {
-    std::cout << shm_identifier << std::endl;
+
   m_shm = std::unique_ptr<ip::managed_shared_memory>(
       new ip::managed_shared_memory(ip::open_only, shm_identifier.c_str()));
 
