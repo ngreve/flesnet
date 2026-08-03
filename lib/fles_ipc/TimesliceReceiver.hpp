@@ -70,6 +70,7 @@ public:
 
   [[nodiscard]] bool eos() const override { return eos_; }
 
+protected:
   std::shared_ptr<boost::interprocess::managed_shared_memory> managed_shm_;
 
 private:
