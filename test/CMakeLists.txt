@@ -6,6 +6,7 @@ add_executable(test_Timeslice test_Timeslice.cpp)
 add_executable(test_Archive test_Archive.cpp)
 add_executable(test_TimesliceAutoSource test_TimesliceAutoSource.cpp)
 add_executable(test_TimesliceMultiInputArchive test_TimesliceMultiInputArchive.cpp)
+add_executable(test_TimesliceShm test_TimesliceShm.cpp)
 add_executable(test_Microslice test_Microslice.cpp)
 add_executable(test_logging test_logging.cpp)
 
@@ -15,6 +16,7 @@ target_compile_definitions(test_Timeslice PUBLIC BOOST_TEST_DYN_LINK)
 target_compile_definitions(test_Archive PUBLIC BOOST_TEST_DYN_LINK)
 target_compile_definitions(test_TimesliceAutoSource PUBLIC BOOST_TEST_DYN_LINK)
 target_compile_definitions(test_TimesliceMultiInputArchive PUBLIC BOOST_TEST_DYN_LINK)
+target_compile_definitions(test_TimesliceShm PUBLIC BOOST_TEST_DYN_LINK)
 target_compile_definitions(test_Microslice PUBLIC BOOST_TEST_DYN_LINK)
 target_compile_definitions(test_logging PUBLIC BOOST_TEST_DYN_LINK)
 
@@ -24,6 +26,7 @@ target_include_directories(test_Timeslice SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
 target_include_directories(test_Archive SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
 target_include_directories(test_TimesliceAutoSource SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
 target_include_directories(test_TimesliceMultiInputArchive SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
+target_include_directories(test_TimesliceShm SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
 target_include_directories(test_Microslice SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
 target_include_directories(test_logging SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
 
@@ -36,6 +39,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(test_TimesliceAutoSource rt)
 endif()
 target_link_libraries(test_TimesliceMultiInputArchive fles_ipc logging ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(test_TimesliceShm fles_ipc logging ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(test_Microslice fles_ipc ${Boost_LIBRARIES})
 target_link_libraries(test_logging logging ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
@@ -46,6 +50,7 @@ if(APPLE)
   target_link_directories(test_Archive PRIVATE ${ZSTD_LIB_DIR})
   target_link_directories(test_TimesliceAutoSource PRIVATE ${ZSTD_LIB_DIR})
   target_link_directories(test_TimesliceMultiInputArchive PRIVATE ${ZSTD_LIB_DIR})
+  target_link_directories(test_TimesliceShm PRIVATE ${ZSTD_LIB_DIR})
   target_link_directories(test_Microslice PRIVATE ${ZSTD_LIB_DIR})
   target_link_directories(test_logging PRIVATE ${ZSTD_LIB_DIR})
 endif()
@@ -54,6 +59,10 @@ add_custom_command(TARGET test_Timeslice POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy
                    ${PROJECT_SOURCE_DIR}/test/reference/example1.tsa
                    $<TARGET_FILE_DIR:test_Timeslice>)
+add_custom_command(TARGET test_TimesliceShm POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy
+                   ${PROJECT_SOURCE_DIR}/test/reference/example1.tsa
+                   $<TARGET_FILE_DIR:test_TimesliceShm>)
 add_custom_command(TARGET test_Microslice POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy
                    ${PROJECT_SOURCE_DIR}/test/reference/example1.msa
@@ -69,6 +78,7 @@ add_test(NAME test_Timeslice COMMAND test_Timeslice)
 add_test(NAME test_Archive COMMAND test_Archive)
 add_test(NAME test_TimesliceAutoSource COMMAND test_TimesliceAutoSource)
 add_test(NAME test_TimesliceMultiInputArchive COMMAND test_TimesliceMultiInputArchive)
+add_test(NAME test_TimesliceShm COMMAND test_TimesliceShm)
 add_test(NAME test_Microslice COMMAND test_Microslice)
 add_test(NAME test_logging COMMAND test_logging)
 
