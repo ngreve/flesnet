@@ -22,7 +22,6 @@ void Parameters::parse_options(int argc, char** argv) {
   po::options_description advanced("Advanced options");
   auto general_add = general.add_options();
   auto advanced_add = advanced.add_options();
-  string connectors_option;
 
   general_add("help,h", "Print this help");
   general_add("log-level,l",
@@ -61,6 +60,12 @@ void Parameters::parse_options(int argc, char** argv) {
                   ->implicit_value(log_syslog)
                   ->value_name("<n>"),
               "enable logging to syslog at given log level");
+
+  general_add("distribution",
+              po::value<string>(&distribution_algorithm)
+                  ->default_value("fair")
+                  ->value_name("<fair|unfair>"),
+              "If started as Central Manager, changes the distribution algorithm used for distributing timeslices.");
 
   advanced_add("data-buffer-map-size",
                po::value<uint64_t>(&data_buffer_map_size)

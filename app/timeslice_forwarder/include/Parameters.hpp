@@ -26,6 +26,7 @@ public:
   std::string monitoring_uri;
   std::string output_uri;
   std::string input_uri;
+  std::string distribution_algorithm;
 
   uint64_t data_buffer_map_size = 4096;
   uint64_t wi_buffer_size{wi_buffer_size_in_mb * 1000};
