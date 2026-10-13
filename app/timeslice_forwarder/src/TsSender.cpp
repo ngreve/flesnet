@@ -278,12 +278,17 @@ TsSender::TsSender(uint64_t node_id,
   Node::on_connection_refused(std::bind(&TsSender::on_connection_refused, this, _1));
   Node::on_node_disconnected(std::bind(&TsSender::on_node_disconnected, this, _1, _2, _3));
 
-  wi_buffer_status_ = make_shared<WorkItem>();
+  wi_buffer_status_ = make_shared<WiTimesliceStatus>();
   wi_buffer_status_->type = WorkItem::buffer_status;
-  ts_reader->on_new_timeslice([this]() {
+  ts_reader->on_new_timeslice([this](uint64_t ts_idx, uint64_t ts_size, float current_buffer_level) {
+    wi_buffer_status_->ts_indexes.push_back(ts_idx);
+    wi_buffer_status_->ts_indexes.push_back(ts_size);
+    wi_buffer_status_->current_buffer_level = current_buffer_level;
     available_timeslices_cnt_++;
     if (is_cm_available()) { // currently always true
       Node::send_work_item(cm_address_, wi_buffer_status_);
+      wi_buffer_status_->ts_indexes.clear();
+      wi_buffer_status_->ts_indexes.clear();
     } else {
       uint64_t node_uid;
       {

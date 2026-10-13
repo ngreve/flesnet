@@ -1,5 +1,6 @@
 
 #include "CentralManager.hpp"
+#include "CmFair.hpp"
 #include "Parameters.hpp"
 #include "TsReceiver.hpp"
 #include "TsSender.hpp"
@@ -19,7 +20,13 @@ Parameters par;
 
 int start_cm(string hostname = "") {
   L_(info) << "Starting Central Manager ...";
-  auto node = make_shared<CentralManager>(
+  // auto node = make_shared<CentralManager>(
+  //     par.central_manager_listen_addr,
+  //     par.wi_buffer_size,
+  //     par.wi_buffer_map_size,
+  //     par.monitoring_uri,
+  //     hostname);
+  auto node = make_shared<CmFair>(
       par.central_manager_listen_addr,
       par.wi_buffer_size,
       par.wi_buffer_map_size,

@@ -59,7 +59,7 @@ void TsclientReader::clear_last_timeslice() {
   L_(trace) << "TS reader - last_timeslice_ resetted after: " << duration_cast<milliseconds>(stop_clock_ - start_clock_).count();
 }
 
-void TsclientReader::on_new_timeslice(std::function<void()> cb) {
+void TsclientReader::on_new_timeslice(std::function<void(uint64_t /*ts_idx*/, uint64_t /*ts_size*/, float /*current_buffer_level*/)> cb) {
   new_timeslice_callbacks_.add(cb);
 }
 
@@ -93,7 +93,7 @@ void TsclientReader::start_timeslice_reading() {
       ts = first_timeslice_ ? std::move(first_timeslice_) : source_->get();
 
       stop = high_resolution_clock::now();
-      L_(trace) << "TS reader - got ts after: " << duration_cast<milliseconds>(stop - start).count();
+      L_(trace) << "TS reader - tgot ts afer: " << duration_cast<milliseconds>(stop - start).count();
       if (!ts) {
         L_(debug) << "ts is null";
         break;
@@ -108,15 +108,19 @@ void TsclientReader::start_timeslice_reading() {
       // Proactively request lock and start preparing data in the meantime
       atomic_bool is_locked = false;
       node_connector_->lock_buffer_map(buffer_map_, [&is_locked]() { is_locked = true; }, []() { return true; });
+
       // One element per component, in component order. The tag holds the component flags,
       // the receiver derives the other descriptor fields from the data.
       const auto desc = ts->st_descriptor();
       const auto num_components = desc.components.size();
+      uint64_t combined_size = 0;
       vector<uint64_t> sizes(num_components);
       vector<uint64_t> addresses(num_components);
       vector<uint32_t> tags(num_components);
       for (uint64_t i = 0; i < num_components; i++) {
         sizes[i] = desc.components[i].ms_data_size;
+        combined_size += sizes[i];
+
         addresses[i] = desc.components[i].ms_data_offset; // relative to the SHM region
         tags[i] = desc.components[i].flags;
       }
@@ -144,13 +148,18 @@ void TsclientReader::start_timeslice_reading() {
       }
 
       // first element of the insertion will contain the TS index
-      buffer_map_ret->user_0 = ts->index();
+      auto ts_index = ts->index();
+      auto buffer_size = buffer_map_->get_list_metadata()->buffer_size;
+      auto used_mem = buffer_map_->get_list_metadata()->used_mem;
+      float fill_level = (static_cast<float>(buffer_size) / static_cast<float>(used_mem)) * 100.0;
+      buffer_map_ret->user_0 = ts_index;
       node_connector_->unlock_buffer_map(buffer_map_);
       last_timeslice_ = std::move(ts);
       start_clock_ = high_resolution_clock::now();
       timeslice_available = true;
+
       // tell everyone about the new data
-      new_timeslice_callbacks_.call();
+      new_timeslice_callbacks_.call(ts_index, combined_size, fill_level);
     }
     return int(!stop_);
   });

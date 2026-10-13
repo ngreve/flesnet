@@ -9,6 +9,7 @@
 #include "LogVar.hpp"
 #include "Monitor.hpp"
 #include "TsclientReader.hpp"
+#include "WorkItems.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -38,7 +39,7 @@ private:
   std::shared_ptr<BufferMap> wi_buffer_map_ = nullptr;
   std::shared_ptr<ConnectorInterface> node_connector_ = nullptr;
   std::string node_listen_addr_;
-  std::shared_ptr<WorkItem> wi_buffer_status_ = nullptr;
+  std::shared_ptr<WiTimesliceStatus> wi_buffer_status_ = nullptr;
 
   std::future<void> log_thread_;
 

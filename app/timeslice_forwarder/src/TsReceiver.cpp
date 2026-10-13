@@ -44,7 +44,7 @@ TsReceiver::TsReceiver(uint64_t node_id,
                              {"rx_failed_self_locks", failed_self_locks_}});
     }
   });
-  wi_work_done_ = make_shared<WiWorkDone>();
+  wi_work_done_ = make_shared<WiTimesliceStatus>();
   ts_sink_ = make_shared<TsclientWriter>(output_uri);
   data_buffer_ = ts_sink_->get_buffer();
   data_buffer_size_ = ts_sink_->get_buffer_size();
@@ -60,16 +60,20 @@ TsReceiver::TsReceiver(uint64_t node_id,
             while (ts_sink_->pop_finished_component_id(component_id)) {
                 uint64_t combined_size;
                 auto component = data_buffer_map_->get_elements_of_component(component_id, combined_size);
+                wi_work_done_->ts_indexes.push_back(component[0]->user_0);
+                wi_work_done_->ts_sizes.push_back(combined_size);
                 data_buffer_map_->remove_elements(component);
                 work_done_cnt++;
             }
 
             buffer_fill_state_ = (static_cast<double>(data_buffer_map_->get_list_metadata()->used_mem) / static_cast<double>(data_buffer_map_->get_list_metadata()->buffer_size)) * 100.0;
             buffer_map_fill_state_ = (static_cast<double>(data_buffer_map_->get_list_metadata()->element_cnt - data_buffer_map_->get_list_metadata()->available_element_cnt) / static_cast<double>(data_buffer_map_->get_list_metadata()->element_cnt)) * 100.0;
+            wi_work_done_->current_buffer_level = buffer_fill_state_;
             available_timeslices_cnt_ -= work_done_cnt;
-
-            wi_work_done_->cnt =  work_done_cnt;
+            // wi_work_done_->cnt =  work_done_cnt;
             Node::send_work_item(cm_address_, wi_work_done_);
+            wi_work_done_->ts_indexes.clear();
+            wi_work_done_->ts_sizes.clear();
             node_connector_->unlock_buffer_map(data_buffer_map_); }, []() { return true; });
   });
 
@@ -171,9 +175,7 @@ void TsReceiver::on_new_data(const std::string& /*address*/, uint64_t /*group_id
         );
         node_connector_->unlock_buffer_map(data_buffer_map_);
         recv_cnt_++;
-        mb_received_cumulative_ += (component_size / 1000000);
-    }, [this] () {
+        mb_received_cumulative_ += (component_size / 1000000); }, [this]() {
         failed_self_locks_++;
-        return true;
-    });
+        return true; });
 }

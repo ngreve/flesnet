@@ -11,7 +11,7 @@
 #include <memory>
 
 class CentralManager : public Node {
-private:
+protected:
   // const uint64_t BUFFER_MAP_ELEMENTS = 512;
   // const uint64_t DATA_BUFFER_SIZE = static_cast<uint64_t>(1024 * 1024) * 450;
   // const uint64_t WI_BUFFER_SIZE = static_cast<uint64_t>(1024 * 1024) * 5;
@@ -29,9 +29,6 @@ private:
 
   // WorkerThread worker;
   ConnectionManager connection_manager_; // used to take track of connections between nodes
-  std::condition_variable eval_worker_cv_;
-  std::future<void> eval_worker_;
-  std::atomic_bool stop_eval_worker = false;
 
   std::atomic_uint16_t target_idx_ = 0;
   std::atomic_uint64_t input_nodes_cnt_ = 0;
@@ -70,18 +67,17 @@ private:
 
   void connect_nodes(uint64_t node_uid);
 
-  void eval_node_status();
-
-  void eval_thread();
+  virtual void on_new_buffer_status(std::shared_ptr<char> wi_serialized, uint64_t group_id, uint64_t node_id) = 0;
 
 public:
   constexpr static uint64_t SENDER_GROUP_ID = 1;
   constexpr static uint64_t RECEIVER_GROUP_ID = 2;
-
+  CentralManager() = delete;
   CentralManager(
       std::string listen_address,
       uint64_t wi_buffer_size,
       uint64_t wi_buffer_map_size,
       std::string monitoring_uri = "",
       std::string hostname = "");
+  virtual ~CentralManager() {};
 };
