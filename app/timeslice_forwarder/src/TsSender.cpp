@@ -54,9 +54,14 @@ void TsSender::send_latest_data(uint64_t rem_group_id, uint64_t rem_node_id) {
                     L_(trace) << "send_latest_data - done calculating";
                     if (dest_addresses.empty()) {
                         L_(debug) << "Remote buffer full - Node ID: " << rem_node_id << " - Group ID: " << rem_group_id;
-                        auto wi_buffer_full_report = make_shared<WiBufferFullReport>();
-                        wi_buffer_full_report->node_id = rem_node_id;
-                        wi_buffer_full_report->group_id = rem_group_id;
+                        auto wi_buffer_full_report = make_shared<WiTimesliceStatus>();
+                        auto rem_node_uid = MAKE_UID(rem_group_id, rem_node_id);
+                        wi_buffer_full_report->origin_group_id = group_id_;
+                        wi_buffer_full_report->origin_node_id = node_id_;
+                        wi_buffer_full_report->ts_indexes.push_back(timeslice_index);
+                        wi_buffer_full_report->ts_sizes.push_back(combined_size);
+                        wi_buffer_full_report->sub_type = WiType::wi_buffer_full_report;
+                        wi_buffer_full_report->node_uids.push_back(rem_node_uid);
                         send_work_item(cm_address_, wi_buffer_full_report);
                         node_connector_->unlock_remote_buffer_map(
                             rem_address,
@@ -80,9 +85,14 @@ void TsSender::send_latest_data(uint64_t rem_group_id, uint64_t rem_node_id) {
                     auto *el = rem_buffer_map_copy->insert(component_elements, dest_addresses, node_id_, group_id_, BufferMap::ListElement::RX);
                     if (el == nullptr) {
                         L_(warning) << "Remote buffer map has no elements available - Node ID: " << rem_node_id << " - Group ID: " << rem_group_id;
-                        auto wi_buffer_full_report = make_shared<WiBufferFullReport>();
-                        wi_buffer_full_report->node_id = rem_node_id;
-                        wi_buffer_full_report->group_id = rem_group_id;
+                        auto wi_buffer_full_report = make_shared<WiTimesliceStatus>();
+                        auto rem_node_uid = MAKE_UID(rem_group_id, rem_node_id);
+                        wi_buffer_full_report->origin_group_id = group_id_;
+                        wi_buffer_full_report->origin_node_id = node_id_;
+                        wi_buffer_full_report->ts_indexes.push_back(timeslice_index);
+                        wi_buffer_full_report->ts_sizes.push_back(combined_size);
+                        wi_buffer_full_report->sub_type = WiType::wi_buffer_full_report;
+                        wi_buffer_full_report->node_uids.push_back(rem_node_uid);
                         send_work_item(cm_address_, wi_buffer_full_report);
                         node_connector_->unlock_remote_buffer_map(
                             rem_address,
@@ -279,7 +289,9 @@ TsSender::TsSender(uint64_t node_id,
   Node::on_node_disconnected(std::bind(&TsSender::on_node_disconnected, this, _1, _2, _3));
 
   wi_buffer_status_ = make_shared<WiTimesliceStatus>();
-  wi_buffer_status_->type = WorkItem::buffer_status;
+  wi_buffer_status_->sub_type = WiType::wi_timeslice_status;
+  wi_buffer_status_->origin_node_id = node_id_;
+  wi_buffer_status_->origin_group_id = group_id_;
   ts_reader->on_new_timeslice([this](uint64_t ts_idx, uint64_t ts_size, float current_buffer_level) {
     wi_buffer_status_->ts_indexes.push_back(ts_idx);
     wi_buffer_status_->ts_indexes.push_back(ts_size);

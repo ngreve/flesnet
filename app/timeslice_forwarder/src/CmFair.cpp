@@ -1,5 +1,4 @@
 #include "CmFair.hpp"
-#include "WorkItems.hpp"
 #include "log.hpp"
 #include <cstdint>
 #include <exception>
@@ -22,7 +21,9 @@ void CmFair::on_new_buffer_status(std::shared_ptr<char> wi_serialized, uint64_t 
   auto node_uid = MAKE_UID(group_id, node_id);
   if (group_id == SENDER_GROUP_ID) {
     unique_lock<mutex> l(mtx_);
-    nodes_data_available_.push_back(node_uid);
+    WiTimesliceStatus ts_status;
+    ts_status.deserialize(wi_serialized);
+    sender_status_available_.push_back(ts_status);
     eval_worker_cv_.notify_all();
   } else if (group_id == RECEIVER_GROUP_ID) {
     WiTimesliceStatus wi_done;
@@ -43,9 +44,10 @@ void CmFair::on_new_buffer_status(std::shared_ptr<char> wi_serialized, uint64_t 
 
 void CmFair::eval_node_status() {
   unique_lock<mutex> l(mtx_);
-  auto it = nodes_data_available_.begin();
-  while (it != nodes_data_available_.end()) {
-    auto sender_uid = *it;
+  auto it = sender_status_available_.begin();
+  while (it != sender_status_available_.end()) {
+    auto& wi = *it;
+    auto sender_uid = MAKE_UID(wi.origin_group_id, wi.origin_node_id);
     auto connections = connection_manager_.get_connections(sender_uid);
     if (connections.empty()) { // node is not connected to any other node
       return;
@@ -80,7 +82,7 @@ void CmFair::eval_node_status() {
     wi_tx->node_uid = node_uid_lowest_load;
     wi_tx->type = WorkItem::transmission;
     Node::send_work_item(uid_address_map_[sender_uid], wi_tx);
-    it = nodes_data_available_.erase(it);
+    it = sender_status_available_.erase(it);
   }
 }
 
@@ -89,7 +91,7 @@ void CmFair::eval_thread() {
     {
       unique_lock<mutex> l(mtx_);
       eval_worker_cv_.wait_for(l, std::chrono::milliseconds(200), [&]() {
-        return !nodes_data_available_.empty() || static_cast<bool>(stop_eval_worker_);
+        return !sender_status_available_.empty() || static_cast<bool>(stop_eval_worker_);
       });
     }
     eval_node_status();

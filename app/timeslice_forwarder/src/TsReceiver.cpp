@@ -45,6 +45,9 @@ TsReceiver::TsReceiver(uint64_t node_id,
     }
   });
   wi_work_done_ = make_shared<WiTimesliceStatus>();
+  wi_work_done_->sub_type = WiType::wi_timeslice_status;
+  wi_work_done_->origin_node_id = node_id_;
+  wi_work_done_->origin_group_id = group_id_;
   ts_sink_ = make_shared<TsclientWriter>(output_uri);
   data_buffer_ = ts_sink_->get_buffer();
   data_buffer_size_ = ts_sink_->get_buffer_size();

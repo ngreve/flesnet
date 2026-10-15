@@ -1,5 +1,6 @@
 #pragma once
 #include "CentralManager.hpp"
+#include "WorkItems.hpp"
 
 class CmFair : public CentralManager {
 public:
@@ -11,6 +12,8 @@ public:
   ~CmFair() override;
 
 private:
+  std::vector<WiTimesliceStatus> sender_status_available_;
+
   std::condition_variable eval_worker_cv_;
   std::future<void> eval_worker_;
   std::atomic_bool stop_eval_worker_ = false;
