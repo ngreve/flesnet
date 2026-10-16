@@ -51,6 +51,7 @@ CentralManager::CentralManager(
 }
 
 void CentralManager::on_node_connected(std::string address, uint64_t group_id, uint64_t node_id) {
+  on_new_node(group_id, node_id);
   auto node_uid = MAKE_UID(group_id, node_id);
   if (group_id == SENDER_GROUP_ID) {
     input_nodes_cnt_++;

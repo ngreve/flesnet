@@ -56,9 +56,11 @@ public:
   std::vector<uint64_t> ts_sizes;
   std::vector<uint64_t> ts_indexes;
   std::vector<uint64_t> node_uids;
-  float current_buffer_level = 0; // in percent
-  WiType sub_type;
+  float buffer_level = 0;     // in percent
+  float rem_buffer_level = 0; // in percent
+  uint64_t vector_clock = 0;
 
+  WiType sub_type;
   WiTimesliceStatus() {
     type = WorkItem::Type::buffer_status;
     sub_type = WiType::none;
@@ -68,7 +70,14 @@ public:
   template <typename Archive>
   void serialize(Archive& ar, const unsigned /*version*/) {
     WI_SERIALIZE(ar);
-    ar & ts_sizes & ts_indexes & node_uids & current_buffer_level & sub_type;
+    ar &
+        ts_sizes &
+        ts_indexes &
+        node_uids &
+        buffer_level &
+        rem_buffer_level &
+        vector_clock &
+        sub_type;
   }
 
   std::shared_ptr<char> serialize(uint64_t* size) override {

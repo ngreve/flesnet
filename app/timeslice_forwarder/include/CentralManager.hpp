@@ -64,6 +64,7 @@ protected:
   void connect_nodes(uint64_t node_uid);
 
   virtual void on_new_buffer_status(std::shared_ptr<char> wi_serialized, uint64_t group_id, uint64_t node_id) = 0;
+  virtual void on_new_node(uint64_t group_id, uint64_t node_id) = 0;
 
 public:
   constexpr static uint64_t SENDER_GROUP_ID = 1;

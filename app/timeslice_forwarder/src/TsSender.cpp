@@ -29,7 +29,7 @@ void TsSender::send_latest_data(uint64_t rem_group_id, uint64_t rem_node_id) {
 
   node_connector_->lock_buffer_map(data_buffer_map_, [this, rem_address, rem_node_id, rem_group_id]() {
         auto *el = data_buffer_map_->get_oldest_linked_list_element(nullptr, BufferMap::ListElement::IO::RX);
-        buffer_fill_state_ =(static_cast<double>(data_buffer_map_->get_list_metadata()->used_mem) / static_cast<double>(data_buffer_map_->get_list_metadata()->buffer_size)) * 100.0;
+        buffer_fill_state_ = (static_cast<double>(data_buffer_map_->get_list_metadata()->used_mem) / static_cast<double>(data_buffer_map_->get_list_metadata()->buffer_size)) * 100.0;
         buffer_map_fill_state_ = (static_cast<double>(data_buffer_map_->get_list_metadata()->element_cnt - data_buffer_map_->get_list_metadata()->available_element_cnt) / static_cast<double>(data_buffer_map_->get_list_metadata()->element_cnt)) * 100.0;
         if (el == nullptr) { // no oldest element available
             L_(debug) << "No data available to send";
@@ -62,6 +62,10 @@ void TsSender::send_latest_data(uint64_t rem_group_id, uint64_t rem_node_id) {
                         wi_buffer_full_report->ts_sizes.push_back(combined_size);
                         wi_buffer_full_report->sub_type = WiType::wi_buffer_full_report;
                         wi_buffer_full_report->node_uids.push_back(rem_node_uid);
+                        auto const* const rem_metadata = rem_buffer_map_copy->get_list_metadata();
+                        wi_buffer_full_report->vector_clock = rem_metadata->vector_clock_lock_cnt;
+                        wi_buffer_full_report->buffer_level = buffer_fill_state_;
+                        wi_buffer_full_report->rem_buffer_level = static_cast<double>(rem_metadata->buffer_size) / static_cast<double>(rem_metadata->used_mem);
                         send_work_item(cm_address_, wi_buffer_full_report);
                         node_connector_->unlock_remote_buffer_map(
                             rem_address,
@@ -93,6 +97,10 @@ void TsSender::send_latest_data(uint64_t rem_group_id, uint64_t rem_node_id) {
                         wi_buffer_full_report->ts_sizes.push_back(combined_size);
                         wi_buffer_full_report->sub_type = WiType::wi_buffer_full_report;
                         wi_buffer_full_report->node_uids.push_back(rem_node_uid);
+                        auto const* const rem_metadata = rem_buffer_map_copy->get_list_metadata();
+                        wi_buffer_full_report->vector_clock = rem_metadata->vector_clock_lock_cnt;
+                        wi_buffer_full_report->buffer_level = buffer_fill_state_;
+                        wi_buffer_full_report->rem_buffer_level = static_cast<double>(rem_metadata->buffer_size) / static_cast<double>(rem_metadata->used_mem);
                         send_work_item(cm_address_, wi_buffer_full_report);
                         node_connector_->unlock_remote_buffer_map(
                             rem_address,
@@ -295,7 +303,7 @@ TsSender::TsSender(uint64_t node_id,
   ts_reader->on_new_timeslice([this](uint64_t ts_idx, uint64_t ts_size, float current_buffer_level) {
     wi_buffer_status_->ts_indexes.push_back(ts_idx);
     wi_buffer_status_->ts_indexes.push_back(ts_size);
-    wi_buffer_status_->current_buffer_level = current_buffer_level;
+    wi_buffer_status_->buffer_level = current_buffer_level;
     available_timeslices_cnt_++;
     if (is_cm_available()) { // currently always true
       Node::send_work_item(cm_address_, wi_buffer_status_);

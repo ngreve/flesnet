@@ -68,12 +68,14 @@ TsReceiver::TsReceiver(uint64_t node_id,
                 data_buffer_map_->remove_elements(component);
                 work_done_cnt++;
             }
-
-            buffer_fill_state_ = (static_cast<double>(data_buffer_map_->get_list_metadata()->used_mem) / static_cast<double>(data_buffer_map_->get_list_metadata()->buffer_size)) * 100.0;
-            buffer_map_fill_state_ = (static_cast<double>(data_buffer_map_->get_list_metadata()->element_cnt - data_buffer_map_->get_list_metadata()->available_element_cnt) / static_cast<double>(data_buffer_map_->get_list_metadata()->element_cnt)) * 100.0;
-            wi_work_done_->current_buffer_level = buffer_fill_state_;
+            auto const* const metadata = data_buffer_map_->get_list_metadata();
+            buffer_fill_state_ = (static_cast<double>(metadata->used_mem) / static_cast<double>(metadata->buffer_size)) * 100.0;
+            buffer_map_fill_state_ = (static_cast<double>(metadata->element_cnt - metadata->available_element_cnt) / static_cast<double>(metadata->element_cnt)) * 100.0;
+            wi_work_done_->buffer_level = buffer_fill_state_;
+            wi_work_done_->vector_clock = metadata->vector_clock_lock_cnt;
             available_timeslices_cnt_ -= work_done_cnt;
             // wi_work_done_->cnt =  work_done_cnt;
+
             Node::send_work_item(cm_address_, wi_work_done_);
             wi_work_done_->ts_indexes.clear();
             wi_work_done_->ts_sizes.clear();
