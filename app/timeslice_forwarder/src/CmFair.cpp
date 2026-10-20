@@ -89,6 +89,7 @@ void CmFair::eval_node_status() {
     }
     receiver_status_available_.clear();
   }
+  L_(debug) << "eval_node_status start 1";
 
   std::vector<uint64_t> failed_senders_;
   {
@@ -115,6 +116,7 @@ void CmFair::eval_node_status() {
     buffer_full_reports_.clear();
   }
 
+  L_(debug) << "eval_node_status start 2";
   for (auto& ts_index : processed_ts_indexes) {
     auto found_idx = false;
     unique_lock<mutex> l(mtx_);
@@ -125,6 +127,7 @@ void CmFair::eval_node_status() {
       if (idx == ts_index) {
         nodes_load_[receiver_uid] -= ts_size;
         ts_sending_status_by_age_.erase(it);
+        found_idx = true;
         break;
       }
     }
@@ -133,6 +136,7 @@ void CmFair::eval_node_status() {
     }
   }
 
+  L_(debug) << "eval_node_status start 3";
   for (auto& failed_sender_uid : failed_senders_) {
     auto found_node = false;
     unique_lock<mutex> l(mtx_);
@@ -147,12 +151,16 @@ void CmFair::eval_node_status() {
     }
     if (!found_node) {
       L_(error) << "Could not found node to process buffer full repor";
+    } else {
+      L_(info) << "Processed buffer full report";
     }
   }
 
+  L_(debug) << "eval_node_status start 4";
   {
     unique_lock<mutex> l(mtx_);
     for (auto& sender_status : sender_status_available_) {
+
       auto sender_uid = MAKE_UID(sender_status.origin_group_id, sender_status.origin_node_id);
       auto ts_idx = sender_status.ts_indexes[0];
       auto ts_size = sender_status.ts_sizes[0];
@@ -169,16 +177,20 @@ void CmFair::eval_node_status() {
     sender_status_available_.clear();
   }
 
+  L_(debug) << "eval_node_status start 5";
   {
+    unique_lock<mutex> l(mtx_);
     for (auto& ts_status : ts_sending_status_by_age_) {
+      auto sender_uid = ts_status->sender_node_uid;
       if (ts_status->order_given) {
+        L_(debug) << "order given: " << NODE_ID(sender_uid);
         continue;
       }
 
-      unique_lock<mutex> l(mtx_);
-      auto sender_uid = ts_status->sender_node_uid;
+      L_(debug) << "Calc destination for sender: " << NODE_ID(sender_uid);
       auto connections = connection_manager_.get_connections(sender_uid);
       if (connections.empty()) { // node is not connected to any other node
+        L_(debug) << "sender: " << NODE_ID(sender_uid) << " - no connections available";
         return;
       }
 
@@ -196,10 +208,12 @@ void CmFair::eval_node_status() {
       }
 
       if (lowest_load_value == UINT64_MAX) {
+        L_(debug) << "sender: " << NODE_ID(sender_uid) << " - lowest load exit";
+        ts_status->order_given = false;
         continue;
       }
 
-      L_(debug) << "Eval node status"
+      L_(debug) << "Eval node status: "
                 << "Send from: " << NODE_ID(sender_uid) << " - to: " << NODE_ID(node_uid_lowest_load);
       nodes_load_[node_uid_lowest_load] += ts_status->ts_size;
       monitor_->QueueMetric("timeslice_forwarder_state",
@@ -210,6 +224,8 @@ void CmFair::eval_node_status() {
       auto wi_tx = make_shared<WiTransmission>();
       wi_tx->node_uid = node_uid_lowest_load;
       wi_tx->type = WorkItem::transmission;
+      ts_status->order_given = true;
+      ts_status->receiver_node_uid = node_uid_lowest_load;
       Node::send_work_item(uid_address_map_[sender_uid], wi_tx);
     }
   }

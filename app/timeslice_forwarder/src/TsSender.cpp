@@ -174,6 +174,7 @@ void TsSender::send_latest_data(uint64_t rem_group_id, uint64_t rem_node_id) {
 }
 
 void TsSender::on_new_work_item(std::string /*address*/, std::shared_ptr<char> wi_ptr, WorkItem::Type wi_type, uint64_t group_id, uint64_t node_id) {
+  L_(debug) << "Received work item";
   if (group_id == 0 && node_id == 0) {       // received new work item from central manager
     if (wi_type == WorkItem::transmission) { // CM told us to send data to a specific node
       WiTransmission wi_transmission;
@@ -302,7 +303,7 @@ TsSender::TsSender(uint64_t node_id,
   wi_buffer_status_->origin_group_id = group_id_;
   ts_reader->on_new_timeslice([this](uint64_t ts_idx, uint64_t ts_size, float current_buffer_level) {
     wi_buffer_status_->ts_indexes.push_back(ts_idx);
-    wi_buffer_status_->ts_indexes.push_back(ts_size);
+    wi_buffer_status_->ts_sizes.push_back(ts_size);
     wi_buffer_status_->buffer_level = current_buffer_level;
     available_timeslices_cnt_++;
     if (is_cm_available()) { // currently always true

@@ -128,20 +128,20 @@ void CentralManager::on_new_work_item(std::string /*address*/, std::shared_ptr<c
     connection_manager_.connect_unidirectional(from, to);
   } else if (static_cast<WiType>(wi_type) == WiType::buffer_status) { // The sender node has new data available
     on_new_buffer_status(wi_ptr, group_id, node_id);
-  } else if (static_cast<WiType>(wi_type) == WiType::wi_buffer_full_report) { // The sender node failed to transmit data because of a full remote buffer
-    auto wi_buffer_full_report = make_shared<WiBufferFullReport>();
-    wi_buffer_full_report->deserialize(wi_ptr);
-    L_(trace) << "WiType::wi_buffer_full_report FROM node_id: " << node_id << " - group_id " << group_id << " - ABOUT N: " << wi_buffer_full_report->node_id << " - G: " << wi_buffer_full_report->group_id;
-    auto rem_node_uid = MAKE_UID(wi_buffer_full_report->group_id, wi_buffer_full_report->node_id);
-    unique_lock<mutex> l(mtx_);
-    nodes_data_available_.push_back(node_uid);
-    --nodes_load_[rem_node_uid];
-    L_(trace) << "nodes_load_[node_uid]: " << nodes_load_[rem_node_uid];
-    monitor_->QueueMetric("timeslice_forwarder_state",
-                          {{"CM", "CM"},
-                           {"host", hostname_},
-                           {"receiver", to_string(wi_buffer_full_report->node_id)}},
-                          {{"cm_receiver_load", nodes_load_[rem_node_uid]}});
+    // } else if (static_cast<WiType>(wi_type) == WiType::wi_buffer_full_report) { // The sender node failed to transmit data because of a full remote buffer
+    //   auto wi_buffer_full_report = make_shared<WiBufferFullReport>();
+    //   wi_buffer_full_report->deserialize(wi_ptr);
+    //   L_(trace) << "WiType::wi_buffer_full_report FROM node_id: " << node_id << " - group_id " << group_id << " - ABOUT N: " << wi_buffer_full_report->node_id << " - G: " << wi_buffer_full_report->group_id;
+    //   auto rem_node_uid = MAKE_UID(wi_buffer_full_report->group_id, wi_buffer_full_report->node_id);
+    //   unique_lock<mutex> l(mtx_);
+    //   nodes_data_available_.push_back(node_uid);
+    //   --nodes_load_[rem_node_uid];
+    //   L_(trace) << "nodes_load_[node_uid]: " << nodes_load_[rem_node_uid];
+    //   monitor_->QueueMetric("timeslice_forwarder_state",
+    //                         {{"CM", "CM"},
+    //                          {"host", hostname_},
+    //                          {"receiver", to_string(wi_buffer_full_report->node_id)}},
+    //                         {{"cm_receiver_load", nodes_load_[rem_node_uid]}});
   } else {
     L_(warning) << "Received unknown WorkItem type: " << static_cast<WiType>(wi_type) << " - node_id: " << node_id << " - group_id " << group_id;
   }

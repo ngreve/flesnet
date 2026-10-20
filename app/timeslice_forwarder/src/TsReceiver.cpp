@@ -74,8 +74,9 @@ TsReceiver::TsReceiver(uint64_t node_id,
             wi_work_done_->buffer_level = buffer_fill_state_;
             wi_work_done_->vector_clock = metadata->vector_clock_lock_cnt;
             available_timeslices_cnt_ -= work_done_cnt;
-            // wi_work_done_->cnt =  work_done_cnt;
 
+            // wi_work_done_->cnt =  work_done_cnt;
+            L_(info) << "Sending status";
             Node::send_work_item(cm_address_, wi_work_done_);
             wi_work_done_->ts_indexes.clear();
             wi_work_done_->ts_sizes.clear();

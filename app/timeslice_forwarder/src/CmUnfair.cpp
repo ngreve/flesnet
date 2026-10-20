@@ -24,6 +24,7 @@ void CmUnfair::on_new_node(uint64_t group_id, uint64_t node_id) {
 }
 
 void CmUnfair::on_new_buffer_status(std::shared_ptr<char> wi_serialized, uint64_t group_id, uint64_t node_id) {
+  return;
   auto node_uid = MAKE_UID(group_id, node_id);
   if (group_id == SENDER_GROUP_ID) {
     unique_lock<mutex> l(mtx_);
