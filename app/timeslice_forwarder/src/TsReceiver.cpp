@@ -137,7 +137,8 @@ void TsReceiver::on_node_connected(string address, uint64_t rem_group_id, uint64
 
 void TsReceiver::on_connection_refused(std::string address) {
   if (address == cm_address_) { // connection refused
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    L_(info) << "Connection refused to Central Manager on: " << address;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     Node::connect_to_node(cm_address_);
   } else {
     L_(fatal) << "Connection refused: Node with address '" << address << "' not available";

@@ -30,7 +30,16 @@ private:
   // <receiver node_uid, counter of concurrent receives>
   std::unordered_map<uint64_t, uint64_t> concurrent_receives_map_;
 
-  std::vector<uint64_t> available_timeslices_on_node;
+  // tuple represents <Node UID, TS Index, Instruction given, failed attempts>
+  struct SendingStatus {
+    uint64_t sender_node_uid = 0;
+    uint64_t ts_index = 0;
+    uint64_t ts_size = 0;
+    bool order_given = false;
+    uint64_t failed_sending_attempts = 0;
+    uint64_t receiver_node_uid = 0;
+  };
+  std::vector<std::shared_ptr<SendingStatus>> ts_sending_status_by_age_;
 
   std::condition_variable eval_worker_cv_;
   std::future<void> eval_worker_;
