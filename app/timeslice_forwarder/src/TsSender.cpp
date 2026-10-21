@@ -38,6 +38,7 @@ void TsSender::send_latest_data(uint64_t rem_group_id, uint64_t rem_node_id) {
         }
         uint64_t combined_size = 0;
         uint64_t timeslice_index = el->user_0;
+        L_(info) << "Trying to send timeslice_index: " << timeslice_index;
         auto component_elements = data_buffer_map_->get_elements_of_component(el->compontent_id, combined_size);
         auto *data_write_chain = new std::function<void()>;
         (*data_write_chain) = [this, timeslice_index, data_write_chain, rem_address, component_elements, combined_size, rem_node_id, rem_group_id] () {

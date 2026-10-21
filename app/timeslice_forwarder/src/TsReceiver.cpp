@@ -65,6 +65,8 @@ TsReceiver::TsReceiver(uint64_t node_id,
                 auto component = data_buffer_map_->get_elements_of_component(component_id, combined_size);
                 wi_work_done_->ts_indexes.push_back(component[0]->user_0);
                 wi_work_done_->ts_sizes.push_back(combined_size);
+                L_(info) << "Processed TS: " << component[0]->user_0;
+
                 data_buffer_map_->remove_elements(component);
                 work_done_cnt++;
             }
@@ -162,7 +164,7 @@ void TsReceiver::on_new_data(const std::string& /*address*/, uint64_t /*group_id
         }
 
         *(bytes_received_.value) = *(bytes_received_.value) + component_size;
-        L_(debug)  << "New data from Node ID: " << component[0]->node_id << " - Group ID: " << component[0]->group_id;
+        L_(debug) << "New data from Node ID: " << component[0]->node_id << " - Group ID: " << component[0]->group_id << " - ts_idx: " << component[0]->user_0;
         ts_sink_->write_timeslice(component);
         buffer_fill_state_ = (static_cast<double>(data_buffer_map_->get_list_metadata()->used_mem) / static_cast<double>(data_buffer_map_->get_list_metadata()->buffer_size)) * 100.0;
         buffer_map_fill_state_ = (static_cast<double>(data_buffer_map_->get_list_metadata()->element_cnt - data_buffer_map_->get_list_metadata()->available_element_cnt) / static_cast<double>(data_buffer_map_->get_list_metadata()->element_cnt)) * 100.0;

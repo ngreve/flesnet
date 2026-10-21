@@ -2,6 +2,7 @@
 #include "CentralManager.hpp"
 #include "WorkItems.hpp"
 #include <cstdint>
+#include <map>
 #include <unordered_map>
 
 class CmFair : public CentralManager {
@@ -29,6 +30,8 @@ private:
 
   // <receiver node_uid, counter of concurrent receives>
   std::unordered_map<uint64_t, uint64_t> concurrent_receives_map_;
+
+  std::set<uint64_t> seen_ts_indexes;
 
   // tuple represents <Node UID, TS Index, Instruction given, failed attempts>
   struct SendingStatus {

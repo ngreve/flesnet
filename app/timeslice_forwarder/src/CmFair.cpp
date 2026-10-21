@@ -36,6 +36,12 @@ void CmFair::on_new_buffer_status(std::shared_ptr<char> wi_serialized, uint64_t 
     if (group_id == SENDER_GROUP_ID) {
       L_(debug) << "Received buffer status of sender...";
       unique_lock<mutex> l(mtx_);
+      L_(debug) << "wi sender node_id: " << ts_status.origin_node_id
+                << "node_id: " << node_id;
+
+      if (node_id != ts_status.origin_node_id) {
+        L_(warning) << "unequal NODE IDS";
+      }
       sender_status_available_.push_back(ts_status);
       eval_worker_cv_.notify_all();
     } else if (group_id == RECEIVER_GROUP_ID) {
@@ -75,6 +81,9 @@ void CmFair::eval_node_status() {
       L_(debug) << "Receiver Processed: " << endl
                 << "Node ID: " << wi.origin_node_id << endl
                 << "TS Count: " << wi.ts_indexes.size();
+      for (auto& idx : wi.ts_indexes) {
+        L_(debug) << "Processed: " << idx;
+      }
       if (receiver_status->vector_clock < wi.vector_clock) {
         receiver_status->buffer_fill_level = wi.buffer_level;
         receiver_status->full = false;
@@ -102,7 +111,9 @@ void CmFair::eval_node_status() {
 
       L_(debug) << "Buffer Full Report: " << endl
                 << "From Node ID: " << wi.origin_node_id << endl
-                << "To Node ID: " << NODE_ID(wi.node_uids[0]);
+                << "To Node ID: " << NODE_ID(wi.node_uids[0]) << endl
+                << "TS index: " << wi.ts_indexes[0];
+
       if (receiver_status->vector_clock < wi.vector_clock) {
         receiver_status->buffer_fill_level = wi.rem_buffer_level;
         receiver_status->full = true;
@@ -111,7 +122,26 @@ void CmFair::eval_node_status() {
         L_(debug) << "BUFFER FULL status: Ignored status update";
       }
       sender_status->buffer_fill_level = wi.buffer_level;
-      failed_senders_.push_back(sender_node_uid);
+      auto found_node = false;
+      for (auto& send_status : ts_sending_status_by_age_) {
+        L_(info) << "inner loop";
+        auto& node_uid = send_status->sender_node_uid;
+        auto& ts_index = send_status->ts_index;
+        if (node_uid == sender_node_uid && ts_index == wi.ts_indexes[0]) {
+          found_node = true;
+          send_status->order_given = false;
+          send_status->failed_sending_attempts++;
+          nodes_load_[receiver_node_uid] -= send_status->ts_size;
+
+          L_(debug) << "Buffer full report from: " << NODE_ID(node_uid) << " - TS index: " << send_status->ts_index;
+          break;
+        }
+      }
+      if (!found_node) {
+        L_(warning) << "Could not found node to process buffer full repor";
+      } else {
+        L_(info) << "Processed buffer full report";
+      }
     }
     buffer_full_reports_.clear();
   }
@@ -126,41 +156,46 @@ void CmFair::eval_node_status() {
       auto& ts_size = (*it)->ts_size;
       if (idx == ts_index) {
         nodes_load_[receiver_uid] -= ts_size;
+        L_(debug) << "removed queue entry with ts idx: " << idx;
         ts_sending_status_by_age_.erase(it);
         found_idx = true;
         break;
       }
     }
     if (!found_idx) {
-      L_(error) << "Could not found ts index to removed it from queued timeslices";
+      L_(warning) << "Could not found ts index to removed it from queued timeslices";
     }
   }
 
   L_(debug) << "eval_node_status start 3";
-  for (auto& failed_sender_uid : failed_senders_) {
-    auto found_node = false;
-    unique_lock<mutex> l(mtx_);
-    for (auto& send_status : ts_sending_status_by_age_) {
-      auto& node_uid = send_status->sender_node_uid;
-      if (node_uid == failed_sender_uid) {
-        found_node = true;
-        send_status->order_given = false;
-        send_status->failed_sending_attempts++;
-        break;
-      }
-    }
-    if (!found_node) {
-      L_(error) << "Could not found node to process buffer full repor";
-    } else {
-      L_(info) << "Processed buffer full report";
-    }
-  }
+  // for (auto& failed_sender_uid : failed_senders_) {
+  //   L_(info) << "Failed sender: " << NODE_ID(failed_sender_uid);
+  //   auto found_node = false;
+  //   unique_lock<mutex> l(mtx_);
+  //   for (auto& send_status : ts_sending_status_by_age_) {
+  //     L_(info) << "inner loop";
+
+  //     auto& node_uid = send_status->sender_node_uid;
+  //     auto& ts_index = send_status->ts_index;
+  //     if (node_uid == failed_sender_uid) {
+  //       found_node = true;
+  //       send_status->order_given = false;
+  //       send_status->failed_sending_attempts++;
+  //       L_(debug) << "Buffer full report from: " << NODE_ID(node_uid) << " - TS index: " << send_status->ts_index;
+  //       break;
+  //     }
+  //   }
+  //   if (!found_node) {
+  //     L_(warning) << "Could not found node to process buffer full repor";
+  //   } else {
+  //     L_(info) << "Processed buffer full report";
+  //   }
+  // }
 
   L_(debug) << "eval_node_status start 4";
   {
     unique_lock<mutex> l(mtx_);
     for (auto& sender_status : sender_status_available_) {
-
       auto sender_uid = MAKE_UID(sender_status.origin_group_id, sender_status.origin_node_id);
       auto ts_idx = sender_status.ts_indexes[0];
       auto ts_size = sender_status.ts_sizes[0];
@@ -170,8 +205,12 @@ void CmFair::eval_node_status() {
       sending_status->sender_node_uid = sender_uid;
       sending_status->ts_index = ts_idx;
       sending_status->ts_size = ts_size;
-
+      if (seen_ts_indexes.find(ts_idx) != seen_ts_indexes.end()) {
+        L_(warning) << "Seen same index multiple times" << endl;
+      }
+      seen_ts_indexes.insert(ts_idx);
       node_status_map_[sender_uid]->buffer_fill_level = sender_buffer_level;
+      L_(debug) << "New senders status from: " << sender_status.origin_node_id;
       ts_sending_status_by_age_.push_back(sending_status);
     }
     sender_status_available_.clear();
@@ -183,7 +222,7 @@ void CmFair::eval_node_status() {
     for (auto& ts_status : ts_sending_status_by_age_) {
       auto sender_uid = ts_status->sender_node_uid;
       if (ts_status->order_given) {
-        L_(debug) << "order given: " << NODE_ID(sender_uid);
+        L_(debug) << "order given: " << NODE_ID(ts_status->sender_node_uid) << " - ts index: " << ts_status->ts_index << " - ts_status->receiver: " << NODE_ID(ts_status->receiver_node_uid);
         continue;
       }
 
@@ -226,7 +265,10 @@ void CmFair::eval_node_status() {
       wi_tx->type = WorkItem::transmission;
       ts_status->order_given = true;
       ts_status->receiver_node_uid = node_uid_lowest_load;
-      Node::send_work_item(uid_address_map_[sender_uid], wi_tx);
+      int ret = Node::send_work_item(uid_address_map_[sender_uid], wi_tx);
+      if (ret != 0) {
+        L_(warning) << "failed to send tranmission work item to " << NODE_ID(sender_uid);
+      }
     }
   }
   L_(debug) << "eval_node_status end";
@@ -280,13 +322,13 @@ void CmFair::eval_thread() {
   while (!stop_eval_worker_) {
     {
       unique_lock<mutex> l(mtx_);
-      // eval_worker_cv_.wait_for(l, std::chrono::milliseconds(200), [&]() {
-      //   return !sender_status_available_.empty() || static_cast<bool>(stop_eval_worker_);
-      // });
-      eval_worker_cv_.wait(l);
-      if (stop_eval_worker_) {
-        break;
-      }
+      eval_worker_cv_.wait_for(l, std::chrono::milliseconds(500), [&]() {
+        return !sender_status_available_.empty() || !receiver_status_available_.empty() || !buffer_full_reports_.empty() || static_cast<bool>(stop_eval_worker_);
+      });
+      // eval_worker_cv_.wait(l);
+      // if (stop_eval_worker_) {
+      //   break;
+      // }
     }
     eval_node_status();
   }
