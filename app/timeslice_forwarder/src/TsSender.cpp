@@ -63,6 +63,7 @@ void TsSender::send_latest_data(uint64_t rem_group_id, uint64_t rem_node_id) {
                         wi_buffer_full_report->ts_sizes.push_back(combined_size);
                         wi_buffer_full_report->sub_type = WiType::wi_buffer_full_report;
                         wi_buffer_full_report->node_uids.push_back(rem_node_uid);
+
                         auto const* const rem_metadata = rem_buffer_map_copy->get_list_metadata();
                         wi_buffer_full_report->vector_clock = rem_metadata->vector_clock_lock_cnt;
                         wi_buffer_full_report->buffer_level = buffer_fill_state_;
