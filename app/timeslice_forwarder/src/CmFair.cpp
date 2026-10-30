@@ -18,6 +18,7 @@ CmFair::CmFair(std::string listen_address,
                                                       monitoring_uri,
                                                       hostname) {
   eval_worker_ = async(launch::async, &CmFair::eval_thread, this);
+  periodic_log_ = async(launch::async, &CmFair::periodic_log, this);
 }
 
 void CmFair::on_new_node(uint64_t group_id, uint64_t node_id) {
@@ -166,6 +167,15 @@ void CmFair::eval_node_status() {
     }
   }
 
+  if (!processed_ts_indexes.empty()) {
+    processed_timeslices_sum_ += processed_ts_indexes.size();
+    *processed_timeslices_per_second_.value += processed_ts_indexes.size();
+    monitor_->QueueMetric("timeslice_forwarder_state",
+                          {{"CM", "CM"},
+                           {"host", hostname_}},
+                          {{"cm_processed_timeslices_sum", processed_timeslices_sum_}});
+  }
+
   {
     L_(debug) << "Processing sender status: ";
     unique_lock<mutex> l(mtx_);
@@ -249,6 +259,16 @@ void CmFair::eval_node_status() {
     }
   }
   L_(debug) << "eval_node_status END";
+}
+
+void CmFair::periodic_log() {
+  while (!stop_eval_worker_) {
+    this_thread::sleep_for(chrono::seconds(2));
+    monitor_->QueueMetric("timeslice_forwarder_state",
+                          {{"CM", "CM"},
+                           {"host", hostname_}},
+                          {{"cm_processed_timeslices_per_second", *processed_timeslices_per_second_.per_seconds()}});
+  }
 }
 
 void CmFair::eval_thread() {

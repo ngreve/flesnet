@@ -1,4 +1,5 @@
 #pragma once
+#include "LogVar.hpp"
 #include "Monitor.hpp"
 #include "WorkItems.hpp"
 #include <atomic>
@@ -45,6 +46,9 @@ protected:
    * In short, the node UID with the lowest value has currently the least amount of work.
    */
   std::unordered_map<uint64_t, std::atomic_uint64_t> nodes_load_;
+
+  std::atomic_uint64_t processed_timeslices_sum_ = 0;
+  Avg<std::atomic<double>> processed_timeslices_per_second_;
 
   /**
    * @brief (key: receiver node UID, value: is buffer full)

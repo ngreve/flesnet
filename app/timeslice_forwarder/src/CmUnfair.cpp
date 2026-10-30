@@ -1,9 +1,11 @@
 #include "CmUnfair.hpp"
 #include "log.hpp"
+#include <chrono>
 #include <cstdint>
 #include <exception>
 #include <iterator>
 #include <ostream>
+#include <thread>
 #include <vector>
 
 using namespace std;
@@ -18,6 +20,7 @@ CmUnfair::CmUnfair(std::string listen_address,
                                                           monitoring_uri,
                                                           hostname) {
   eval_worker_ = async(launch::async, &CmUnfair::eval_thread, this);
+  periodic_log_ = async(launch::async, &CmUnfair::periodic_log, this);
 }
 
 void CmUnfair::on_new_node(uint64_t group_id, uint64_t node_id) {
@@ -25,7 +28,8 @@ void CmUnfair::on_new_node(uint64_t group_id, uint64_t node_id) {
   unique_lock<mutex> l(mtx_);
   auto node_uid = MAKE_UID(group_id, node_id);
   node_status_map_[node_uid] = make_shared<NodeBufferStatus>();
-  ts_count_map[node_uid] = 0;
+  // ts_count_map[node_uid] = 0;
+  remaining_receives_[node_uid] = 0;
   L_(debug) << "on_new_node end";
 }
 
@@ -78,7 +82,7 @@ void CmUnfair::eval_node_status() {
       for (auto& idx : wi.ts_indexes) {
         L_(debug) << "\tProcessed: " << idx;
       }
-      ts_count_map[receiver_node_uid] += wi.ts_indexes.size();
+      // ts_count_map[receiver_node_uid] += wi.ts_indexes.size();
 
       if (receiver_status->vector_clock < wi.vector_clock) {
         receiver_status->buffer_fill_level = wi.buffer_level;
@@ -127,6 +131,7 @@ void CmUnfair::eval_node_status() {
           send_status->order_given = false;
           send_status->failed_sending_attempts++;
           nodes_load_[receiver_node_uid] -= send_status->ts_size;
+          remaining_receives_[receiver_node_uid]--;
           // L_(debug) << "\tBuffer full report processed: " << NODE_ID(node_uid);
           break;
         }
@@ -150,6 +155,7 @@ void CmUnfair::eval_node_status() {
       auto& ts_size = (*it)->ts_size;
       if (idx == ts_index) {
         nodes_load_[receiver_uid] -= ts_size;
+        remaining_receives_[receiver_uid]--;
         L_(debug) << "\tRemoved queue entry with TS idx: " << idx;
         ts_sending_status_by_age_.erase(it);
         found_idx = true;
@@ -159,6 +165,15 @@ void CmUnfair::eval_node_status() {
     if (!found_idx) {
       L_(warning) << "\tCould not found ts index to removed it from queued timeslices";
     }
+  }
+
+  if (!processed_ts_indexes.empty()) {
+    processed_timeslices_sum_ += processed_ts_indexes.size();
+    *processed_timeslices_per_second_.value += processed_ts_indexes.size();
+    monitor_->QueueMetric("timeslice_forwarder_state",
+                          {{"CM", "CM"},
+                           {"host", hostname_}},
+                          {{"cm_processed_timeslices_sum", processed_timeslices_sum_}});
   }
 
   {
@@ -211,7 +226,7 @@ void CmUnfair::eval_node_status() {
       for (auto& conn : connections) {
         L_(debug) << "\tReceiver " << NODE_ID(conn) << " - full: " << node_status_map_[conn]->full << " - load: " << nodes_load_[conn];
         auto recv_node_id = NODE_ID(conn);
-        if ((recv_node_id % 2) == 0 && (nodes_load_[conn] != 0 || ((current_time - rx_last_processed_ts_time_[recv_node_id]) < 5))) {
+        if ((recv_node_id % 2) == 0 && (remaining_receives_[conn] != 0 || ((current_time - rx_last_processed_ts_time_[recv_node_id]) < 5))) {
           continue;
         }
         possible_receivers.push_back(conn);
@@ -224,7 +239,7 @@ void CmUnfair::eval_node_status() {
           if (unset) {
             node_with_lowest_receive_count = node_uid;
             unset = false;
-          } else if (ts_count_map[node_uid] < ts_count_map[node_with_lowest_receive_count]) {
+          } else if (remaining_receives_[node_uid] < remaining_receives_[node_with_lowest_receive_count]) {
             node_with_lowest_receive_count = node_uid;
           }
         }
@@ -260,6 +275,7 @@ void CmUnfair::eval_node_status() {
         L_(debug) << "\tEval node status: "
                   << "Send from: " << NODE_ID(sender_uid) << " - to: " << NODE_ID(receiver);
         nodes_load_[receiver] += ts_status->ts_size;
+        remaining_receives_[receiver]++;
         monitor_->QueueMetric("timeslice_forwarder_state",
                               {{"CM", "CM"},
                                {"host", hostname_},
@@ -279,6 +295,16 @@ void CmUnfair::eval_node_status() {
   }
 
   L_(debug) << "eval_node_status END";
+}
+
+void CmUnfair::periodic_log() {
+  while (!stop_eval_worker_) {
+    this_thread::sleep_for(chrono::seconds(2));
+    monitor_->QueueMetric("timeslice_forwarder_state",
+                          {{"CM", "CM"},
+                           {"host", hostname_}},
+                          {{"cm_processed_timeslices_per_second", *processed_timeslices_per_second_.per_seconds()}});
+  }
 }
 
 void CmUnfair::eval_thread() {

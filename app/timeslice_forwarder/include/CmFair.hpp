@@ -35,6 +35,7 @@ private:
 
   // Node UID, TS count received
   std::unordered_map<uint64_t, uint64_t> ts_count_map;
+
   // tuple represents <Node UID, TS Index, Instruction given, failed attempts>
   struct SendingStatus {
     uint64_t sender_node_uid = 0;
@@ -48,10 +49,12 @@ private:
 
   std::condition_variable eval_worker_cv_;
   std::future<void> eval_worker_;
+  std::future<void> periodic_log_;
   std::atomic_bool stop_eval_worker_ = false;
 
   void on_new_node(uint64_t group_id, uint64_t node_id) override;
   void on_new_buffer_status(std::shared_ptr<char> wi_serialized, uint64_t group_id, uint64_t node_id) override;
   void eval_node_status();
   void eval_thread();
+  void periodic_log();
 };

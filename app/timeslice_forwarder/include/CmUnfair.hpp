@@ -31,7 +31,8 @@ private:
   // <receiver node_uid, counter of concurrent receives>
   std::unordered_map<uint64_t, uint64_t> concurrent_receives_map_;
   std::unordered_map<uint32_t, std::time_t> rx_last_processed_ts_time_;
-  std::unordered_map<uint64_t, uint64_t> ts_count_map;
+  // std::unordered_map<uint64_t, uint64_t> ts_count_map;
+  std::unordered_map<uint64_t, std::atomic_uint64_t> remaining_receives_;
 
   std::set<uint64_t> seen_ts_indexes;
 
@@ -48,10 +49,12 @@ private:
 
   std::condition_variable eval_worker_cv_;
   std::future<void> eval_worker_;
+  std::future<void> periodic_log_;
   std::atomic_bool stop_eval_worker_ = false;
 
   void on_new_node(uint64_t group_id, uint64_t node_id) override;
   void on_new_buffer_status(std::shared_ptr<char> wi_serialized, uint64_t group_id, uint64_t node_id) override;
   void eval_node_status();
   void eval_thread();
+  void periodic_log();
 };
